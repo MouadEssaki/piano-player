@@ -4,7 +4,7 @@ import "abcjs/abcjs-audio.css";
 
 export default function App() {
   const [abcText, setAbcText] = useState(
-    `X:1
+`X:1
 T:Transcription de Partition
 M:4/4
 L:1/8
@@ -27,14 +27,13 @@ V:2 piano bass
 % --- Mesure 5 ---[V:1] [c4e4] ([B2d2] [A2c2]) |[V:2] A,, (E, A, C) E, (A, C E) |]`
   );
 
-  const [currentDroite, setCurrentDroite] = useState<string[]>([]);
-  const [currentGauche, setCurrentGauche] = useState<string[]>([]);
+  const [currentDroite, setCurrentDroite] = useState([]);
+  const [currentGauche, setCurrentGauche] = useState([]);
 
-  // Refs typed as HTMLDivElements to allow .innerHTML access
-  const notationRef = useRef<HTMLDivElement>(null);
-  const synthControlRef = useRef<HTMLDivElement>(null);
+  const notationRef = useRef(null);
+  const synthControlRef = useRef(null);
 
-  const getSolfege = (pitch: number) => {
+  const getSolfege = (pitch) => {
     // Mapping simple. Note: Dans une vraie app musicale, on gérerait les bémols selon la tonalité.
     const notes = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
     return notes[pitch % 12];
@@ -51,7 +50,7 @@ V:2 piano bass
     synthControlRef.current.innerHTML = "";
 
     const visualObj = abcjs.renderAbc(notationRef.current, abcText, {
-      add_classes: true,
+      add_classes: true, 
       responsive: "resize",
     })[0];
 
@@ -59,10 +58,10 @@ V:2 piano bass
       onStart: () => {
         setCurrentDroite([]);
         setCurrentGauche([]);
-        const svg = notationRef.current?.querySelector("svg");
+        const svg = notationRef.current.querySelector("svg");
         if (!svg) return;
-
-        let cursor = svg.querySelector<SVGLineElement>(".abcjs-cursor");
+        
+        let cursor = svg.querySelector(".abcjs-cursor");
         if (!cursor) {
           cursor = document.createElementNS("http://www.w3.org/2000/svg", "line");
           cursor.setAttribute("class", "abcjs-cursor !stroke-blue-400 !stroke-[3px] !opacity-70");
@@ -77,12 +76,11 @@ V:2 piano bass
         document.querySelectorAll(".playing-note").forEach((el) => {
           el.classList.remove("playing-note", ...NOTE_DROITE, ...NOTE_GAUCHE);
         });
-        const cursor = notationRef.current?.querySelector<HTMLElement>(".abcjs-cursor");
+        const cursor = notationRef.current.querySelector(".abcjs-cursor");
         if (cursor) cursor.style.display = "none";
       },
 
-      // Use 'any' here to bypass the strict type check against the library's internal event type
-      onEvent: (event: any) => {
+      onEvent: (event) => {
         if (!event) return;
         // Ignore les événements de structure (barres de mesure sans notes)
         if (event.measureStart && event.left === null) return;
@@ -95,14 +93,14 @@ V:2 piano bass
         });
 
         if (event.elements) {
-          event.elements.forEach((group: Element[]) => {
+          event.elements.forEach((group) => {
             // "group" contient les éléments SVG d'une note (tête, hampe...)
             // On regarde la classe du premier élément pour savoir à quelle voix il appartient
             let isGauche = false;
-
+            
             group.forEach((el) => {
               el.classList.add("playing-note");
-
+              
               // abcjs-v1 correspond à la 2ème voix (Main Gauche ici)
               if (el.classList.contains("abcjs-v1")) {
                 el.classList.add(...NOTE_GAUCHE);
@@ -121,8 +119,8 @@ V:2 piano bass
         // 2. DISTRIBUTION DES NOTES AUDIO (Midi Pitch)
         if (event.midiPitches && event.midiPitches.length > 0) {
           // On récupère tous les pitchs et on les trie du plus grave au plus aigu
-          const pitches = event.midiPitches.map((p: any) => p.pitch).sort((a: number, b: number) => a - b);
-
+          const pitches = event.midiPitches.map(p => p.pitch).sort((a, b) => a - b);
+          
           // On convertit en texte (Solfege)
           const allNotesText = pitches.map(getSolfege);
 
@@ -140,12 +138,12 @@ V:2 piano bass
         }
 
         // 3. CURSEUR
-        const cursor = notationRef.current?.querySelector(".abcjs-cursor");
-        if (cursor && event.left !== undefined && event.left !== null && event.top !== undefined) {
-          cursor.setAttribute("x1", (event.left - 2).toString());
-          cursor.setAttribute("x2", (event.left - 2).toString());
-          cursor.setAttribute("y1", event.top.toString());
-          cursor.setAttribute("y2", (event.top + event.height).toString());
+        const cursor = notationRef.current.querySelector(".abcjs-cursor");
+        if (cursor && event.left !== undefined) {
+          cursor.setAttribute("x1", event.left - 2);
+          cursor.setAttribute("x2", event.left - 2);
+          cursor.setAttribute("y1", event.top);
+          cursor.setAttribute("y2", event.top + event.height);
         }
       },
     };
@@ -159,7 +157,7 @@ V:2 piano bass
       displayWarp: true,
     });
 
-    synthControl.setTune(visualObj, false).catch((err: Error) => console.warn(err));
+    synthControl.setTune(visualObj, false).catch((err) => console.warn(err));
 
     return () => { if (synthControl) synthControl.disable(true); };
   }, [abcText]);
@@ -177,7 +175,7 @@ V:2 piano bass
 
         {/* ── PLAYER + MAINS SÉPARÉES ── */}
         <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-
+          
           {/* LECTEUR */}
           <div className="card bg-base-200 shadow-xl border border-base-content/5 flex-grow">
             <div className="card-body px-6 py-8 flex flex-row items-center justify-center h-full">
