@@ -1,6 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import abcjs from "abcjs";
 import "abcjs/abcjs-audio.css";
+
+// Define a minimal interface for the ABCJS event object
+interface AbcEvent {
+  measureStart?: boolean;
+  left?: number | null;
+  top: number;
+  height: number;
+  elements?: Element[][]; // Groups of SVG elements
+  midiPitches?: { pitch: number }[];
+}
 
 export default function App() {
   const [abcText, setAbcText] = useState(
@@ -27,13 +37,15 @@ V:2 piano bass
 % --- Mesure 5 ---[V:1] [c4e4] ([B2d2] [A2c2]) |[V:2] A,, (E, A, C) E, (A, C E) |]`
   );
 
-  const [currentDroite, setCurrentDroite] = useState([]);
-  const [currentGauche, setCurrentGauche] = useState([]);
+  const [currentDroite, setCurrentDroite] = useState<string[]>([]);
+  const [currentGauche, setCurrentGauche] = useState<string[]>([]);
 
-  const notationRef = useRef(null);
-  const synthControlRef = useRef(null);
+  // Fix: Specify the DOM element type for useRef
+  const notationRef = useRef<HTMLDivElement>(null);
+  const synthControlRef = useRef<HTMLDivElement>(null);
 
-  const getSolfege = (pitch) => {
+  // Fix: Add type for pitch (number)
+  const getSolfege = (pitch: number) => {
     // Mapping simple. Note: Dans une vraie app musicale, on gérerait les bémols selon la tonalité.
     const notes = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
     return notes[pitch % 12];
@@ -44,6 +56,7 @@ V:2 piano bass
   const NOTE_GAUCHE = ["!fill-purple-500", "!stroke-purple-500", "transition-colors", "duration-75"];
 
   useEffect(() => {
+    // These refs are guaranteed to be HTMLDivElements here due to the check
     if (!notationRef.current || !synthControlRef.current) return;
 
     notationRef.current.innerHTML = "";
@@ -58,10 +71,12 @@ V:2 piano bass
       onStart: () => {
         setCurrentDroite([]);
         setCurrentGauche([]);
-        const svg = notationRef.current.querySelector("svg");
+
+        // Fix: Optional chaining to safely access current inside callbacks
+        const svg = notationRef.current?.querySelector("svg");
         if (!svg) return;
 
-        let cursor = svg.querySelector(".abcjs-cursor");
+        let cursor = svg.querySelector<SVGLineElement>(".abcjs-cursor");
         if (!cursor) {
           cursor = document.createElementNS("http://www.w3.org/2000/svg", "line");
           cursor.setAttribute("class", "abcjs-cursor !stroke-blue-400 !stroke-[3px] !opacity-70");
@@ -76,11 +91,13 @@ V:2 piano bass
         document.querySelectorAll(".playing-note").forEach((el) => {
           el.classList.remove("playing-note", ...NOTE_DROITE, ...NOTE_GAUCHE);
         });
-        const cursor = notationRef.current.querySelector(".abcjs-cursor");
+        // Fix: Optional chaining
+        const cursor = notationRef.current?.querySelector<HTMLElement>(".abcjs-cursor");
         if (cursor) cursor.style.display = "none";
       },
 
-      onEvent: (event) => {
+      // Fix: Add the defined interface type to the event parameter
+      onEvent: (event: AbcEvent) => {
         if (!event) return;
         // Ignore les événements de structure (barres de mesure sans notes)
         if (event.measureStart && event.left === null) return;
@@ -138,12 +155,13 @@ V:2 piano bass
         }
 
         // 3. CURSEUR
-        const cursor = notationRef.current.querySelector(".abcjs-cursor");
-        if (cursor && event.left !== undefined) {
-          cursor.setAttribute("x1", event.left - 2);
-          cursor.setAttribute("x2", event.left - 2);
-          cursor.setAttribute("y1", event.top);
-          cursor.setAttribute("y2", event.top + event.height);
+        // Fix: Optional chaining
+        const cursor = notationRef.current?.querySelector(".abcjs-cursor");
+        if (cursor && event.left !== undefined && event.left !== null && event.top !== undefined && event.height !== undefined) {
+          cursor.setAttribute("x1", (event.left - 2).toString());
+          cursor.setAttribute("x2", (event.left - 2).toString());
+          cursor.setAttribute("y1", event.top.toString());
+          cursor.setAttribute("y2", (event.top + event.height).toString());
         }
       },
     };
@@ -157,7 +175,7 @@ V:2 piano bass
       displayWarp: true,
     });
 
-    synthControl.setTune(visualObj, false).catch((err) => console.warn(err));
+    synthControl.setTune(visualObj, false).catch((err: Error) => console.warn(err));
 
     return () => { if (synthControl) synthControl.disable(true); };
   }, [abcText]);
