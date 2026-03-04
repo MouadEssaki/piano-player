@@ -2,16 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import abcjs from "abcjs";
 import "abcjs/abcjs-audio.css";
 
-// Define a minimal interface for the ABCJS event object
-interface AbcEvent {
-  measureStart?: boolean;
-  left?: number | null;
-  top: number;
-  height: number;
-  elements?: Element[][]; // Groups of SVG elements
-  midiPitches?: { pitch: number }[];
-}
-
 export default function App() {
   const [abcText, setAbcText] = useState(
     `X:1
@@ -40,11 +30,10 @@ V:2 piano bass
   const [currentDroite, setCurrentDroite] = useState<string[]>([]);
   const [currentGauche, setCurrentGauche] = useState<string[]>([]);
 
-  // Fix: Specify the DOM element type for useRef
+  // Refs typed as HTMLDivElements to allow .innerHTML access
   const notationRef = useRef<HTMLDivElement>(null);
   const synthControlRef = useRef<HTMLDivElement>(null);
 
-  // Fix: Add type for pitch (number)
   const getSolfege = (pitch: number) => {
     // Mapping simple. Note: Dans une vraie app musicale, on gérerait les bémols selon la tonalité.
     const notes = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
@@ -56,7 +45,6 @@ V:2 piano bass
   const NOTE_GAUCHE = ["!fill-purple-500", "!stroke-purple-500", "transition-colors", "duration-75"];
 
   useEffect(() => {
-    // These refs are guaranteed to be HTMLDivElements here due to the check
     if (!notationRef.current || !synthControlRef.current) return;
 
     notationRef.current.innerHTML = "";
@@ -71,8 +59,6 @@ V:2 piano bass
       onStart: () => {
         setCurrentDroite([]);
         setCurrentGauche([]);
-
-        // Fix: Optional chaining to safely access current inside callbacks
         const svg = notationRef.current?.querySelector("svg");
         if (!svg) return;
 
@@ -91,13 +77,12 @@ V:2 piano bass
         document.querySelectorAll(".playing-note").forEach((el) => {
           el.classList.remove("playing-note", ...NOTE_DROITE, ...NOTE_GAUCHE);
         });
-        // Fix: Optional chaining
         const cursor = notationRef.current?.querySelector<HTMLElement>(".abcjs-cursor");
         if (cursor) cursor.style.display = "none";
       },
 
-      // Fix: Add the defined interface type to the event parameter
-      onEvent: (event: AbcEvent) => {
+      // Use 'any' here to bypass the strict type check against the library's internal event type
+      onEvent: (event: any) => {
         if (!event) return;
         // Ignore les événements de structure (barres de mesure sans notes)
         if (event.measureStart && event.left === null) return;
@@ -110,7 +95,7 @@ V:2 piano bass
         });
 
         if (event.elements) {
-          event.elements.forEach((group) => {
+          event.elements.forEach((group: Element[]) => {
             // "group" contient les éléments SVG d'une note (tête, hampe...)
             // On regarde la classe du premier élément pour savoir à quelle voix il appartient
             let isGauche = false;
@@ -136,7 +121,7 @@ V:2 piano bass
         // 2. DISTRIBUTION DES NOTES AUDIO (Midi Pitch)
         if (event.midiPitches && event.midiPitches.length > 0) {
           // On récupère tous les pitchs et on les trie du plus grave au plus aigu
-          const pitches = event.midiPitches.map(p => p.pitch).sort((a, b) => a - b);
+          const pitches = event.midiPitches.map((p: any) => p.pitch).sort((a: number, b: number) => a - b);
 
           // On convertit en texte (Solfege)
           const allNotesText = pitches.map(getSolfege);
@@ -155,9 +140,8 @@ V:2 piano bass
         }
 
         // 3. CURSEUR
-        // Fix: Optional chaining
         const cursor = notationRef.current?.querySelector(".abcjs-cursor");
-        if (cursor && event.left !== undefined && event.left !== null && event.top !== undefined && event.height !== undefined) {
+        if (cursor && event.left !== undefined && event.left !== null && event.top !== undefined) {
           cursor.setAttribute("x1", (event.left - 2).toString());
           cursor.setAttribute("x2", (event.left - 2).toString());
           cursor.setAttribute("y1", event.top.toString());
